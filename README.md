@@ -1,10 +1,46 @@
 # Earthwork
 
-Earthwork is a first-person JavaScript construction simulator. Dig a hole, load a dump truck, and tip the soil to build a spoil pile. Switch to the forklift to move pallets of water drums, form oil, and bagged cement into the striped delivery bay.
+Earthwork is a first-person construction simulator set in North Yard. Dig a trench with the excavator, haul the soil away in the dump truck, or take the forklift and stock the pallet bay.
+
+**[Play Earthwork in your browser](https://gregwhitaker.github.io/earthwork/)** · [Screenshots](#screenshots) · [Controls](#controls) · [Run locally](#run-locally)
+
+![The excavator drops soil into the orange dump truck beside a fresh cut in North Yard.](docs/screenshots/north-yard.webp)
+
+## Your first haul
+
+1. Start in the excavator's **Dig** mode. Click a patch of ground within reach and press **Space** to scoop. A full bucket holds 0.5 m³.
+2. Click the truck bed or select **Aim at truck bed**. Once the bucket is over the bed, press **Space** to empty it. Use **Return to dig area** for the next scoop. Four full buckets meet the 2.0 m³ target.
+3. Press **V** to take the wheel of the dump truck. Drive to open ground and stop. Press **Space** to tip the soil into a spoil pile, then press it again to lower the bed before driving away.
 
 Driving leaves marks in the dirt. The dump truck stamps wide chevrons, the forklift leaves narrow ribbed tracks, and the excavator presses in its steel treads. Digging or covering them with fresh soil clears the marks.
 
-[Play Earthwork in your browser](https://gregwhitaker.github.io/earthwork/)
+## Stock the pallet bay
+
+The forklift starts with its forks under the water drums. Press **Space** to lift the pallet, drive it into the striped bay, then stop and press **Space** to set it down. For the form oil and bagged cement, approach from any side with the forks low. Use **Q / E** to match the spacing of the two openings and drive straight in.
+
+## Screenshots
+
+| Digging in the excavator | Hauling in the dump truck |
+| --- | --- |
+| [![A full bucket hangs above the excavation, with the truck alongside and the depth gauge reading 1.8 m.](docs/screenshots/excavator-dig.webp)](docs/screenshots/excavator-dig.webp) | [![The excavator through the dump truck windshield as the driver hauls 2.0 m³ across the yard.](docs/screenshots/dump-truck-haul.webp)](docs/screenshots/dump-truck-haul.webp) |
+
+| Tipping a spoil pile | Delivering the water drums |
+| --- | --- |
+| [![Soil slides from the raised dump bed into a pile behind the rear wheels, seen from the excavator cab.](docs/screenshots/dump-truck-tipping.webp)](docs/screenshots/dump-truck-tipping.webp) | [![Two blue water drums ride on the forks as the forklift crosses the yellow markings at the pallet bay.](docs/screenshots/forklift-delivery.webp)](docs/screenshots/forklift-delivery.webp) |
+
+## Controls
+
+Choose a cab in the toolbar or press **V** to cycle through them. In the excavator, select **Dig** or **Drive**, or press **T** to switch. The on-screen controls also work with touch.
+
+| Key | Excavator · Dig | Excavator · Drive | Dump truck | Forklift |
+| --- | --- | --- | --- | --- |
+| **W / S** | Raise / lower boom | Forward / reverse | Forward / reverse | Forward / reverse |
+| **A / D** | Swing cab | Turn tracks, even in place | Steer | Steer |
+| **Q / E** | Curl / open bucket | Swing cab independently | — | Narrow / spread forks |
+| **↑ / ↓** | Extend / retract stick | — | — | Raise / lower forks |
+| **Space** | Scoop / empty bucket | Enter Dig and use bucket | Tip / lower bed when stopped | Pick up / set down when stopped |
+
+Drag to look around. **C** centers the view and, in excavator Drive mode, faces the cab along the tracks. **H** opens the operator guide, **P** pauses, and **M** toggles sound. Use **F** or the toolbar's fullscreen button to enter fullscreen and **Esc** to leave it.
 
 ## Run locally
 
@@ -14,20 +50,9 @@ With Node.js installed, run this command from the repository root.
 npm start
 ```
 
-Open [localhost:5173](http://localhost:5173). The game includes Three.js, textures, and fonts and runs without a build or package installation.
+Open [localhost:5173](http://localhost:5173). Three.js, textures, and fonts ship with the JavaScript source, so you can skip dependency installation and build steps.
 
-## Controls
-
-Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to look around, press **C** to center the view, and press **P** to pause. Select the fullscreen icon beside the sound control or press **F** to toggle fullscreen. **Esc** also exits it. The on-screen buttons work with touch.
-
-| Vehicle | Controls |
-| --- | --- |
-| Excavator · Drive | Choose **Drive** or press **T** to switch between driving and digging. **W/S** moves the tracks forward or backward. **A/D** turns, including in place. **Q/E** swings the cab independently and **C** faces it forward along the tracks. |
-| Excavator · Dig | Click the ground to aim. Press **Space** to scoop or empty the bucket. Click the truck bed or use **Aim at truck bed** to load it. For manual control, use **A/D** to swing, **W/S** for the boom, **↑/↓** for reach, and **Q/E** to curl or open the bucket. |
-| Dump truck | Use **W/S** to drive or reverse and **A/D** to steer. Stop and press **Space** to tip or lower the bed. |
-| Forklift | **W/S** drives or reverses and **A/D** steers. **Q/E** brings the forks closer or spreads them apart. Match the two openings on any side of a pallet and drive straight in with the forks low. Stop and press **Space** to pick up or set down the load, or use **↑/↓** to raise or lower the forks manually. |
-
-The browser source and assets are in `earthwork/dist/`. The local server is `earthwork/serve.mjs`.
+[Browser source and assets](earthwork/dist/) · [Local server](earthwork/serve.mjs)
 
 ## License
 
