@@ -9,6 +9,12 @@ export const SHOE_COUNT = 48,
   SHOE_PITCH = (2 * (TRACK_RUN + Math.PI * TRACK_RADIUS)) / SHOE_COUNT;
 const saturate = (value) => Math.max(0, Math.min(1, value));
 
+// Shared by the wheel model and the imprint it leaves in the soil.
+export function tireProfile(radius, width, lugs, slope = 0) {
+  const pitch = (2 * Math.PI * radius) / lugs;
+  return { radius, width, lugs, slope, pitch, blockLength: pitch * 0.54 };
+}
+
 export class TreadMarks {
   constructor(groundSize) {
     this.groundSize = groundSize;
@@ -16,7 +22,7 @@ export class TreadMarks {
     this.scale = this.resolution / groundSize;
     this.depth = new Uint8Array(this.resolution ** 2);
     this.texture = new T.DataTexture(this.depth, this.resolution, this.resolution, T.RedFormat);
-    this.texture.name = 'Crawler impressions';
+    this.texture.name = 'Vehicle tread impressions';
     this.texture.minFilter = this.texture.magFilter = T.LinearFilter;
     this.texture.needsUpdate = true;
     // This second view stays on the CPU. WebGL uploads just the changed rectangle.
@@ -50,6 +56,22 @@ export class TreadMarks {
       });
       this.lastDistance[i] = distances[i];
     }
+  }
+  recordTire(tire, x, z, yaw, travel, phase) {
+    const halfWidth = tire.width / 2;
+    const halfTravel = Math.abs(travel) / 2;
+    const contactRadius = tire.radius * 0.22;
+    const lugDepth = 140 + 75 * tire.radius;
+    // Sweep a rounded contact patch over the entire step, including between frames.
+    this.paint(x, z, yaw, halfWidth, halfTravel + contactRadius, (across, along, old) => {
+      const end = Math.max(0, Math.abs(along) - halfTravel) / contactRadius;
+      const edge = saturate((1 - (across / halfWidth) ** 2 - end * end) * 3);
+      const offset = tire.slope * (Math.abs(across) - halfWidth / 2);
+      const lug = (phase - along + offset) / tire.pitch;
+      const gap = Math.abs(lug - Math.round(lug)) * tire.pitch;
+      const block = saturate((tire.blockLength / 2 + 0.012 - gap) / 0.024);
+      return Math.max(old, Math.round(edge * (48 + lugDepth * block)));
+    });
   }
   erase(x, z, yaw, acrossRadius, alongRadius) {
     this.paint(x, z, yaw, acrossRadius, alongRadius, (across, along, old) => {

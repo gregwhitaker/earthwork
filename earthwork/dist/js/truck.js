@@ -1,5 +1,6 @@
 import * as T from 'three';
 import { driveChassis } from './driving.js';
+import { tireProfile } from './tread-marks.js';
 const handling = {
   forward: 6.2,
   reverse: 3.7,
@@ -32,6 +33,7 @@ import {
 } from './model.js';
 
 export const TRUCK_CAPACITY = 5;
+const truckTire = tireProfile(0.594, 0.397, 27, 0.38);
 const vermilion = material('#b85230', 0.64, 0.26),
   lip = material('#cd7045', 0.64, 0.3),
   cream = material('#e4dfca', 0.52, 0.28),
@@ -83,21 +85,27 @@ function fender(parent, x, z) {
 function wheel(body, x, z) {
   const wheel = group(body, x, 0.603, z),
     side = Math.sign(x);
-  const tire = cyl(wheel, 0, 0, 0, 0.594, 0.594, 0.37, tyre, 32);
+  wheel.userData.tire = truckTire;
+  wheel.rotation.order = 'YXZ';
+  const { radius, width, lugs, slope, blockLength } = truckTire;
+  const tire = cyl(wheel, 0, 0, 0, radius, radius, 0.37, tyre, 32);
   tire.rotation.z = Math.PI / 2;
-  for (let i = 0; i < 27; i++) {
-    const a = (i * 2 * Math.PI) / 27;
-    const tread = box(
-      wheel,
-      0,
-      Math.cos(a) * 0.573,
-      Math.sin(a) * 0.573,
-      0.397,
-      0.064,
-      0.091,
-      mats.rubber
-    );
-    tread.rotation.x = a;
+  const angle = Math.atan(slope);
+  for (let i = 0; i < lugs; i++) {
+    const a = (i * 2 * Math.PI) / lugs;
+    for (const half of [-1, 1]) {
+      const tread = box(
+        wheel,
+        (half * width) / 4,
+        Math.cos(a) * 0.573,
+        Math.sin(a) * 0.573,
+        (width / 2 - 0.01) / Math.cos(angle),
+        0.064,
+        blockLength,
+        mats.rubber
+      );
+      tread.rotation.set(a, half * angle, 0);
+    }
   }
   const sidewall = cyl(wheel, side * 0.19, 0, 0, 0.508, 0.525, 0.045, tyre, 32);
   sidewall.rotation.z = Math.PI / 2;
@@ -326,7 +334,6 @@ export class Truck {
     this.fill = 0;
     this.tip = 0;
     this.tipping = false;
-    this.wheelSpin = 0;
     this.wheels.forEach((wheel) => wheel.rotation.set(0, 0, 0));
     this.steering.rotation.z = 0;
     this.updateBed();
@@ -386,13 +393,8 @@ export class Truck {
     return this.root.localToWorld(v(0, 0.1, hingeZ + 0.83));
   }
   drive(dt, throttle, steering, terrain, allowed) {
-    const distance = driveChassis(this, dt, throttle, steering, terrain, allowed, handling);
-    this.wheelSpin -= distance / 0.594;
-    this.wheels.forEach((w, i) => {
-      w.rotation.order = 'YXZ';
-      w.rotation.y = i < 2 ? this.steer * 0.38 : 0;
-      w.rotation.x = this.wheelSpin;
-    });
+    driveChassis(this, dt, throttle, steering, terrain, allowed, handling);
+    this.wheels[0].rotation.y = this.wheels[1].rotation.y = this.steer * 0.38;
     this.steering.rotation.z = this.steer * 1.1;
   }
 }

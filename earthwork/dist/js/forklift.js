@@ -22,6 +22,7 @@ import {
 } from './model.js';
 import { driveChassis, footprint, overlaps, supportHeight } from './driving.js';
 import { cargoFootprint, PALLET_BLOCK, SLOT_TOP } from './cargo.js';
+import { tireProfile } from './tread-marks.js';
 
 export const MAX_FORK_HEIGHT = 2.72;
 const LOW = 0.08,
@@ -43,13 +44,16 @@ const paint = material('#d68928', 0.48, 0.31),
   bright = material('#eda641', 0.52, 0.24),
   frame = material('#3b4542', 0.55, 0.51),
   polished = material('#8d9890', 0.31, 0.69);
-function tire(root, x, z, r, depth) {
+function tire(root, x, z, profile) {
+  const { radius: r, width: depth, lugs, blockLength } = profile;
   const g = group(root, x, r, z),
     side = Math.sign(x);
+  g.userData.tire = profile;
+  g.rotation.order = 'YXZ';
   const tread = cyl(g, 0, 0, 0, r * 0.98, r * 0.98, depth, mats.rubber, 26);
   tread.rotation.z = Math.PI / 2;
-  for (let i = 0; i < 23; i++) {
-    const a = (i * 2 * Math.PI) / 23;
+  for (let i = 0; i < lugs; i++) {
+    const a = (i * 2 * Math.PI) / lugs;
     const lug = box(
       g,
       0,
@@ -57,7 +61,7 @@ function tire(root, x, z, r, depth) {
       Math.sin(a) * r * 0.968,
       depth * 1.01,
       r * 0.075,
-      0.063,
+      blockLength,
       mats.rubber
     );
     lug.rotation.x = a;
@@ -238,11 +242,11 @@ export class Forklift {
     this.root.name = 'Forklift';
     this.steering = chassis(this.root);
     this.wheels = [];
-    for (const [z, r, d] of [
-      [-0.69, 0.366, 0.22],
-      [0.8, 0.277, 0.192],
+    for (const [z, tread] of [
+      [-0.69, tireProfile(0.366, 0.22, 23)],
+      [0.8, tireProfile(0.277, 0.192, 23)],
     ])
-      for (const side of [-1, 1]) this.wheels.push(tire(this.root, side * 0.61, z, r, d));
+      for (const side of [-1, 1]) this.wheels.push(tire(this.root, side * 0.61, z, tread));
     Object.assign(this, mast(this.root));
     this.cameraMount = group(this.root, -0.055, 1.74, 0.36);
     this.flash = beacon(this.root, 0.47, 2.38, 0.66, 0.04);
@@ -391,7 +395,7 @@ export class Forklift {
     this.pose();
   }
   drive(dt, throttle, steer, allowed) {
-    const distance = driveChassis(
+    driveChassis(
       this,
       dt,
       throttle,
@@ -400,11 +404,7 @@ export class Forklift {
       allowed,
       this.held ? loadedHandling : liftHandling
     );
-    this.wheels.forEach((wheel, i) => {
-      wheel.rotation.order = 'YXZ';
-      wheel.rotation.y = i >= 2 ? -this.steer * 0.61 : 0;
-      wheel.rotation.x -= distance / (i < 2 ? 0.366 : 0.277);
-    });
+    this.wheels[2].rotation.y = this.wheels[3].rotation.y = -this.steer * 0.61;
     this.steering.rotation.z = this.steer * 1.55;
   }
 }

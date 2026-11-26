@@ -2,6 +2,8 @@
 
 Earthwork is a first-person JavaScript construction simulator. Dig a hole, load a dump truck, and tip the soil to build a spoil pile. Switch to the forklift to move pallets of water drums, form oil, and bagged cement into the striped delivery bay.
 
+Driving leaves marks in the dirt. The dump truck stamps wide chevrons, the forklift leaves narrow ribbed tracks, and the excavator presses in its steel treads. Digging or covering them with fresh soil clears the marks.
+
 [Play Earthwork in your browser](https://gregwhitaker.github.io/earthwork/)
 
 ## Run locally
@@ -20,9 +22,13 @@ Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to
 
 | Vehicle | Controls |
 | --- | --- |
-| Excavator · Drive | Choose **Drive** or press **T** to switch between driving and digging. **W/S** moves the tracks forward or backward. **A/D** turns, including in place. **Q/E** swings the cab independently and **C** faces it forward along the tracks. The treads leave impressions that fresh digging or dumped soil can erase. |
+| Excavator · Drive | Choose **Drive** or press **T** to switch between driving and digging. **W/S** moves the tracks forward or backward. **A/D** turns, including in place. **Q/E** swings the cab independently and **C** faces it forward along the tracks. |
 | Excavator · Dig | Click the ground to aim. Press **Space** to scoop or empty the bucket. Click the truck bed or use **Aim at truck bed** to load it. For manual control, use **A/D** to swing, **W/S** for the boom, **↑/↓** for reach, and **Q/E** to curl or open the bucket. |
 | Dump truck | Use **W/S** to drive or reverse and **A/D** to steer. Stop and press **Space** to tip or lower the bed. |
 | Forklift | **W/S** drives or reverses and **A/D** steers. **Q/E** brings the forks closer or spreads them apart. Match the two openings on any side of a pallet and drive straight in with the forks low. Stop and press **Space** to pick up or set down the load, or use **↑/↓** to raise or lower the forks manually. |
 
-The browser source and assets are in `earthwork/dist/`. The local server is `earthwork/serve.mjs`. [Asset credits and licenses](earthwork/dist/assets/credits.txt)
+The browser source and assets are in `earthwork/dist/`. The local server is `earthwork/serve.mjs`.
+
+## License
+
+Earthwork's original code is licensed under the [Apache License 2.0](LICENSE). For bundled libraries, fonts, and images, see the [third-party credits and licenses](earthwork/dist/assets/credits.txt).

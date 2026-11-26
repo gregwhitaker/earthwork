@@ -1,2 +1,35 @@
+# Node.js dependencies, caches, and logs
+node_modules/
+.npm/
+.cache/
+.eslintcache
+*.log
+npm-debug.log.*
+
+# Root build output (earthwork/dist/ contains the game source)
+/build/
+/dist/
+
+# Test and coverage output
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local tooling and editor files
+.openai/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating system files
 .DS_Store
-earthwork/.openai/
+Thumbs.db

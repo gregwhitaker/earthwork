@@ -74,6 +74,29 @@ export function moveChassis(root, dt, distance, turn, terrain, allowed) {
   );
   return accepted;
 }
+function rollTires(vehicle, marks, oldX, oldZ, oldYaw, direction) {
+  const { root, wheels } = vehicle;
+  const oldCos = Math.cos(oldYaw),
+    oldSin = Math.sin(oldYaw);
+  const cos = Math.cos(root.rotation.y),
+    sin = Math.sin(root.rotation.y);
+  for (const wheel of wheels) {
+    const { x, z } = wheel.position;
+    const startX = oldX + oldCos * x + oldSin * z,
+      startZ = oldZ - oldSin * x + oldCos * z;
+    const endX = root.position.x + cos * x + sin * z,
+      endZ = root.position.z - sin * x + cos * z;
+    const dx = endX - startX,
+      dz = endZ - startZ;
+    // Inside and outside tires cover different distances in a turn.
+    const travel = direction * Math.hypot(dx, dz);
+    const yaw = Math.atan2(-direction * dx, -direction * dz);
+    const tire = wheel.userData.tire;
+    const phase = (Math.PI - wheel.rotation.x) * tire.radius + travel / 2;
+    wheel.rotation.x -= travel / tire.radius;
+    marks.recordTire(tire, (startX + endX) / 2, (startZ + endZ) / 2, yaw, travel, phase);
+  }
+}
 export function driveChassis(vehicle, dt, throttle, steering, terrain, allowed, handling) {
   vehicle.steer = T.MathUtils.damp(vehicle.steer, steering, handling.steerResponse, dt);
   const target = throttle * (throttle < 0 ? handling.reverse : handling.forward);
@@ -85,12 +108,16 @@ export function driveChassis(vehicle, dt, throttle, steering, terrain, allowed, 
   );
   if (Math.abs(vehicle.speed) < 0.018) vehicle.speed = 0;
   const distance = vehicle.speed * dt;
+  const { x, z } = vehicle.root.position,
+    yaw = vehicle.root.rotation.y;
   if (
     moveChassis(vehicle.root, dt, distance, vehicle.steer * distance * handling.turn, terrain, () =>
       allowed(vehicle)
     )
-  )
+  ) {
+    if (distance) rollTires(vehicle, terrain.treadMarks, x, z, yaw, Math.sign(distance));
     return distance;
+  }
   vehicle.speed = 0;
   return 0;
 }
