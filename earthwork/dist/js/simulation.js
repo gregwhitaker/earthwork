@@ -704,6 +704,7 @@ export class Simulation {
     return ((Math.atan2(d.x, -d.z) * 180) / Math.PI + 360) % 360;
   }
   render() {
+    this.terrain.treadMarks.upload(this.renderer);
     if (this.time >= this.mirrorDue) {
       const owner = this.machines[this.vehicle];
       const mirror = owner.root.userData.mirror;

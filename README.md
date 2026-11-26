@@ -16,11 +16,11 @@ Open [localhost:5173](http://localhost:5173). The game includes Three.js, textur
 
 ## Controls
 
-Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to look around, press **C** to center the view, and press **P** to pause. The on-screen buttons also work with touch.
+Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to look around, press **C** to center the view, and press **P** to pause. Use the **Fullscreen** button or press **F** to toggle fullscreen. **Esc** also exits it. The on-screen buttons work with touch.
 
 | Vehicle | Controls |
 | --- | --- |
-| Excavator · Drive | Choose **Drive** or press **T** to switch between driving and digging. **W/S** moves the tracks forward or backward. **A/D** turns, including in place. **Q/E** swings the cab independently and **C** faces it forward along the tracks. |
+| Excavator · Drive | Choose **Drive** or press **T** to switch between driving and digging. **W/S** moves the tracks forward or backward. **A/D** turns, including in place. **Q/E** swings the cab independently and **C** faces it forward along the tracks. The treads leave impressions that fresh digging or dumped soil can erase. |
 | Excavator · Dig | Click the ground to aim. Press **Space** to scoop or empty the bucket. Click the truck bed or use **Aim at truck bed** to load it. For manual control, use **A/D** to swing, **W/S** for the boom, **↑/↓** for reach, and **Q/E** to curl or open the bucket. |
 | Dump truck | Use **W/S** to drive or reverse and **A/D** to steer. Stop and press **Space** to tip or lower the bed. |
 | Forklift | **W/S** drives or reverses and **A/D** steers. **Q/E** brings the forks closer or spreads them apart. Match the two openings on any side of a pallet and drive straight in with the forks low. Stop and press **Space** to pick up or set down the load, or use **↑/↓** to raise or lower the forks manually. |

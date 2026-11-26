@@ -1,6 +1,14 @@
 import * as T from 'three';
 import { footprint, moveChassis } from './driving.js';
 import {
+  TRACK_GAUGE,
+  TRACK_WIDTH,
+  TRACK_RUN,
+  TRACK_RADIUS,
+  SHOE_COUNT,
+  SHOE_PITCH,
+} from './tread-marks.js';
+import {
   v,
   group,
   box,
@@ -25,8 +33,7 @@ import {
 } from './model.js';
 
 export const BUCKET_CAPACITY = 0.5;
-const TRACK_GAUGE = 2.12,
-  TRAVEL_SPEED = 1.55,
+const TRAVEL_SPEED = 1.55,
   DEFAULT_REACH = 5.28;
 const L1 = 5.15,
   L2 = 3.45,
@@ -469,13 +476,17 @@ function cab(house) {
 }
 function trackBelt(chassis, x) {
   const belt = group(chassis, x, 0, 0);
-  const count = 48,
-    run = 3.52,
-    radius = 0.39,
+  const count = SHOE_COUNT,
+    run = TRACK_RUN,
+    radius = TRACK_RADIUS,
     arc = Math.PI * radius;
-  const pitch = (2 * (run + arc)) / count;
-  const shoes = new T.InstancedMesh(new T.BoxGeometry(0.69, 0.12, 0.158), mats.steel, count);
-  const cleats = new T.InstancedMesh(new T.BoxGeometry(0.69, 0.037, 0.044), mats.worn, count);
+  const pitch = SHOE_PITCH;
+  const shoes = new T.InstancedMesh(new T.BoxGeometry(TRACK_WIDTH, 0.12, 0.158), mats.steel, count);
+  const cleats = new T.InstancedMesh(
+    new T.BoxGeometry(TRACK_WIDTH, 0.037, 0.044),
+    mats.worn,
+    count
+  );
   for (const parts of [shoes, cleats]) {
     parts.instanceMatrix.setUsage(T.DynamicDrawUsage);
     parts.castShadow = parts.receiveShadow = true;
@@ -625,6 +636,7 @@ export class Excavator {
     this.trackDistances[0] += this.leftSpeed * dt;
     this.trackDistances[1] += this.rightSpeed * dt;
     this.belts.forEach((setDistance, i) => setDistance(this.trackDistances[i]));
+    terrain.treadMarks.record(this.chassis, this.trackDistances);
   }
   defaultDigSpot() {
     return this.chassis.localToWorld(v(baseX, 0, baseZ - DEFAULT_REACH));

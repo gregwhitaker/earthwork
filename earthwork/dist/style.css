@@ -90,7 +90,7 @@ button,
 .brand,
 .control-deck,
 .hud-panel,
-.view-label,
+.fullscreen-button,
 .look-hint,
 .compass,
 .site-name {
@@ -405,27 +405,42 @@ button {
   border-right: 4px solid transparent;
   border-bottom: 5px solid var(--gold);
 }
-.view-label {
+.fullscreen-button {
   position: absolute;
   top: 23px;
   right: 24px;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 9px;
-  background: #172019a6;
-  border: 1px solid #d6dfca45;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: #1b211be0;
+  border: 1px solid #c4cebb62;
   border-radius: 4px;
-  font: 500 0.65rem/1 var(--mono);
-  letter-spacing: 0.09em;
-  pointer-events: none;
+  color: #f2f2ea;
+  font-size: 0.83rem;
+  font-weight: 600;
 }
-.view-label i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #a4d59c;
-  box-shadow: 0 0 6px #8ad18055;
+.fullscreen-button:hover,
+.fullscreen-button[aria-pressed='true'] {
+  background: #343a2f;
+  border-color: #a78c4e;
+  color: #ffe298;
+}
+.fullscreen-button .icon {
+  width: 16px;
+  height: 16px;
+}
+.immersive #viewport {
+  overflow: visible;
+}
+.immersive #scene {
+  position: fixed;
+  inset: 0;
+}
+.immersive .topbar,
+.immersive .control-deck {
+  background: #191e1bc9;
 }
 .look-hint {
   position: absolute;
@@ -768,7 +783,7 @@ dialog dd {
   .look-hint {
     left: 32px;
   }
-  .view-label,
+  .fullscreen-button,
   .instruments {
     right: 32px;
   }
@@ -808,10 +823,10 @@ dialog dd {
     padding: 12px 13px;
   }
   .instruments,
-  .view-label {
+  .fullscreen-button {
     right: 14px;
   }
-  .view-label {
+  .fullscreen-button {
     top: 16px;
   }
   .instruments {
@@ -933,10 +948,10 @@ dialog dd {
     transform: none;
     top: 10px;
   }
-  .view-label {
+  .fullscreen-button {
     top: 48px;
     right: 11px;
-    font-size: 0.55rem;
+    font-size: 0.74rem;
   }
   .look-hint {
     left: 10px;

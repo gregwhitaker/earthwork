@@ -305,7 +305,7 @@ function clearHeld() {
   game?.clearInput();
   document.querySelectorAll('.held').forEach((b) => b.classList.remove('held'));
 }
-const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><p>Choose Dig or Drive, or press T to switch. In Drive, the tracks keep their heading when you swing the cab. Press C to face forward along them.</p><dl><div><dt>Drive forward / reverse</dt><dd>W / S</dd></div><div><dt>Turn tracks left / right</dt><dd>A / D</dd></div><div><dt>Swing cab while driving</dt><dd>Q / E</dd></div></dl><h3>Dig controls</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Approach from any of the four sides. Match the fork spacing to the openings and drive straight in with the forks low. The spacing gauge measures between the centers of the forks. Back clear of the pallet to use the full range. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Narrow / spread forks</dt><dd>Q / E</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
+const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><p>Choose Dig or Drive, or press T to switch. In Drive, the tracks keep their heading when you swing the cab. Press C to face forward along them.</p><dl><div><dt>Drive forward / reverse</dt><dd>W / S</dd></div><div><dt>Turn tracks left / right</dt><dd>A / D</dd></div><div><dt>Swing cab while driving</dt><dd>Q / E</dd></div></dl><h3>Dig controls</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Approach from any of the four sides. Match the fork spacing to the openings and drive straight in with the forks low. The spacing gauge measures between the centers of the forks. Back clear of the pallet to use the full range. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Narrow / spread forks</dt><dd>Q / E</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Toggle fullscreen</dt><dd>F</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
 function setPanel(next) {
   if (!wasReady) return;
   game.paused = true;
@@ -368,6 +368,62 @@ async function toggleSound() {
     notice('Audio is unavailable in this browser.');
   }
 }
+let expandedInWindow = false,
+  changingScreen = false;
+const nativeFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function syncFullscreen() {
+  const active = nativeFullscreen() || expandedInWindow;
+  document.documentElement.classList.toggle('immersive', active);
+  const button = $('fullscreen');
+  const label = expandedInWindow
+    ? 'Exit expanded view'
+    : active
+      ? 'Exit fullscreen'
+      : 'Enter fullscreen';
+  button.setAttribute('aria-pressed', String(active));
+  button.setAttribute('aria-label', label);
+  button.title = label + ' (F)';
+  button.querySelector('span').textContent = expandedInWindow
+    ? 'Exit view'
+    : active
+      ? 'Exit fullscreen'
+      : 'Fullscreen';
+  setIcon('fullscreen', active ? 'exit-fullscreen' : 'fullscreen');
+}
+async function toggleFullscreen() {
+  if (changingScreen) return;
+  changingScreen = true;
+  const root = document.documentElement;
+  try {
+    if (nativeFullscreen()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      await exit.call(document);
+    } else if (expandedInWindow) {
+      expandedInWindow = false;
+    } else {
+      const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+      const enabled = document.fullscreenEnabled ?? document.webkitFullscreenEnabled;
+      if (enter && enabled !== false) {
+        try {
+          await enter.call(root);
+        } catch {
+          expandedInWindow = true;
+        }
+      } else expandedInWindow = true;
+      if (expandedInWindow) notice('Cab view expanded to fill this browser window.');
+    }
+  } catch {
+    if (nativeFullscreen()) notice('Use your browser’s fullscreen control to exit.');
+  } finally {
+    changingScreen = false;
+    syncFullscreen();
+    if (!dialog.open) canvas.focus({ preventScroll: true });
+  }
+}
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
+$('fullscreen').onclick = toggleFullscreen;
+syncFullscreen();
 function unlockSound() {
   if (sound.enabled && !sound.paused && sound.ctx?.state !== 'running') {
     sound.unlock().catch(() => {});
@@ -443,6 +499,14 @@ function release(code) {
 window.addEventListener('keydown', (e) => {
   if (!wasReady || e.ctrlKey || e.metaKey || e.altKey) return;
   const code = e.code;
+  if (
+    code === 'KeyF' ||
+    (code === 'Escape' && !dialog.open && (nativeFullscreen() || expandedInWindow))
+  ) {
+    e.preventDefault();
+    if (!e.repeat) toggleFullscreen();
+    return;
+  }
   if (dialog.open) {
     if (code === 'KeyP' || code === 'KeyH') {
       e.preventDefault();
@@ -555,7 +619,8 @@ try {
   new ResizeObserver(() => {
     game.resize();
     lastHeading = '';
-  }).observe($('viewport'));
+    if (wasReady && game.paused) game.render();
+  }).observe(canvas);
   await game.ready;
   game.render();
   wasReady = true;
