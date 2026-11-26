@@ -42,8 +42,6 @@ npm start
 
 Open [localhost:5173](http://localhost:5173). Three.js, textures, and fonts ship with the JavaScript source, so you can skip dependency installation and build steps.
 
-[Browser source and assets](earthwork/dist/) · [Local server](earthwork/serve.mjs)
-
 ## License
 
 Earthwork's original code is licensed under the [Apache License 2.0](LICENSE). For bundled libraries, fonts, and images, see the [third-party credits and licenses](earthwork/dist/assets/credits.txt).
