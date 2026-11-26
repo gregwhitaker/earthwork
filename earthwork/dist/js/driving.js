@@ -50,6 +50,30 @@ export function supportHeight(terrain, area) {
     ...corners(area).map(([x, z]) => terrain.height(x, z))
   );
 }
+export function moveChassis(root, dt, distance, turn, terrain, allowed) {
+  const oldYaw = root.rotation.y,
+    oldX = root.position.x,
+    oldZ = root.position.z;
+  let accepted = true;
+  if (distance || turn) {
+    root.rotation.y += turn;
+    root.position.x -= Math.sin(root.rotation.y) * distance;
+    root.position.z -= Math.cos(root.rotation.y) * distance;
+    accepted = allowed();
+    if (!accepted) {
+      root.rotation.y = oldYaw;
+      root.position.x = oldX;
+      root.position.z = oldZ;
+    }
+  }
+  root.position.y = T.MathUtils.damp(
+    root.position.y,
+    terrain.height(root.position.x, root.position.z),
+    5,
+    dt
+  );
+  return accepted;
+}
 export function driveChassis(vehicle, dt, throttle, steering, terrain, allowed, handling) {
   vehicle.steer = T.MathUtils.damp(vehicle.steer, steering, handling.steerResponse, dt);
   const target = throttle * (throttle < 0 ? handling.reverse : handling.forward);
@@ -60,26 +84,13 @@ export function driveChassis(vehicle, dt, throttle, steering, terrain, allowed, 
     dt
   );
   if (Math.abs(vehicle.speed) < 0.018) vehicle.speed = 0;
-  const root = vehicle.root,
-    oldYaw = root.rotation.y,
-    oldX = root.position.x,
-    oldZ = root.position.z;
-  let distance = vehicle.speed * dt;
-  root.rotation.y += vehicle.steer * distance * handling.turn;
-  root.position.x -= Math.sin(root.rotation.y) * distance;
-  root.position.z -= Math.cos(root.rotation.y) * distance;
-  if (distance && !allowed(vehicle)) {
-    root.position.x = oldX;
-    root.position.z = oldZ;
-    root.rotation.y = oldYaw;
-    vehicle.speed = 0;
-    distance = 0;
-  }
-  root.position.y = T.MathUtils.damp(
-    root.position.y,
-    terrain.height(root.position.x, root.position.z),
-    5,
-    dt
-  );
-  return distance;
+  const distance = vehicle.speed * dt;
+  if (
+    moveChassis(vehicle.root, dt, distance, vehicle.steer * distance * handling.turn, terrain, () =>
+      allowed(vehicle)
+    )
+  )
+    return distance;
+  vehicle.speed = 0;
+  return 0;
 }

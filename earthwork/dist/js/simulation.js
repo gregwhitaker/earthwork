@@ -15,9 +15,9 @@ import { Excavator, BUCKET_CAPACITY } from './excavator.js';
 import { Truck, TRUCK_CAPACITY } from './truck.js';
 import { v, clamp, rad, group, material, mesh } from './model.js';
 
-const digSpot = { x: 0.7, z: -5.47 };
 const shortest = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const smooth = (t) => t * t * (3 - 2 * t);
+const insideYard = (x, z) => Math.abs(x) <= 23.7 && z >= -23.15 && z <= 23.75;
 const obstructions = [
   [-0.75, -19.6, 3.15, 1.48],
   [13, -20.8, 3.32, 1.97],
@@ -26,7 +26,6 @@ const obstructions = [
   [12.6, -16.3, 3.16, 0.8],
   [-19, 7.8, 0.65, 3.46],
   [10, 14, 1.58, 0.84],
-  [0, 0, 1.67, 2.04],
 ].map((args) => fixedFootprint(...args));
 class DirtParticles {
   constructor(scene) {
@@ -196,9 +195,9 @@ export class Simulation {
     this.keys.clear();
     this.anim = null;
     this.nextStep = null;
-    this.excavator.reset();
-    this.truck.reset();
     this.terrain.reset();
+    this.excavator.reset(this.terrain.height(0, 0));
+    this.truck.reset();
     resetCargo(this.scene, this.terrain, this.cargo);
     this.forklift.reset();
     this.groundVersion = this.terrain.positions.version;
@@ -206,6 +205,8 @@ export class Simulation {
     this.loaded = 0;
     this.hauled = 0;
     this.aimedTruck = false;
+    this.digSpot = this.excavator.defaultDigSpot();
+    this.travelMode = false;
     this.dischargeClock = 0;
     this.vehicle = 'excavator';
     this.mountCamera();
@@ -223,6 +224,7 @@ export class Simulation {
   }
   switchTo(name) {
     if (!Object.hasOwn(this.machines, name) || name === this.vehicle) return;
+    this.excavator.stopTracks();
     this.forklift.speed = 0;
     this.forklift.steer = 0;
     this.truck.speed = 0;
@@ -231,6 +233,21 @@ export class Simulation {
     this.vehicle = name;
     this.mountCamera();
     this.on.changed();
+  }
+  setTravelMode(enabled) {
+    if (this.vehicle !== 'excavator' || this.paused || this.travelMode === enabled) return;
+    this.clearInput();
+    this.excavator.stopTracks();
+    this.travelMode = enabled;
+    this.on.changed();
+  }
+  centerView() {
+    this.setView(0, 0);
+    if (this.vehicle === 'excavator' && this.travelMode && !this.anim) {
+      const angle = Math.abs(shortest(this.excavator.yaw));
+      if (angle > 0.005)
+        this.startMotion('aim', [{ to: { yaw: 0 }, time: Math.max(0.18, angle / 1.25) }]);
+    }
   }
   setView(yaw, pitch) {
     this.lookYaw = clamp(yaw, -Math.PI * 0.99, Math.PI * 0.99);
@@ -262,6 +279,7 @@ export class Simulation {
   startMotion(name, steps) {
     const keys = ['tipY', 'reach', 'curl', 'yaw'];
     const e = this.excavator;
+    e.stopTracks();
     this.anim = { name, steps: steps.map((s) => ({ ...s })), active: null, t: 0 };
     const advance = () => {
       if (!this.anim) return;
@@ -314,10 +332,12 @@ export class Simulation {
       this.on.notice('Lower the truck bed before loading.');
       return false;
     }
+    this.setTravelMode(false);
     this.aimedTruck = isTruck;
+    const baseHeight = e.chassis.position.y;
     const clearance = isTruck
-      ? this.truck.bedCenter().y + 0.54
-      : Math.max(1.25, this.terrain.height(x, z) + 1.0);
+      ? this.truck.bedCenter().y - baseHeight + 0.54
+      : Math.max(1.25, this.terrain.height(x, z) - baseHeight + 1.0);
     this.startMotion('aim', [
       { to: { tipY: Math.max(e.tipY, clearance) }, time: 0.36 },
       {
@@ -331,7 +351,13 @@ export class Simulation {
     if (this.excavator.load > 0.005) {
       const p = this.truck.bedCenter();
       this.aimAt(p.x, p.z, true);
-    } else this.aimAt(digSpot.x, digSpot.z);
+    } else {
+      const e = this.excavator;
+      const last = e.solveTarget(this.digSpot.x, this.digSpot.z);
+      const spot =
+        last && last.reach >= 2 && last.reach <= 7.62 ? this.digSpot : e.defaultDigSpot();
+      this.aimAt(spot.x, spot.z);
+    }
   }
   pick(clientX, clientY) {
     if (this.vehicle !== 'excavator' || this.anim || this.paused) return;
@@ -363,28 +389,30 @@ export class Simulation {
       this.on.notice('Aim at the ground to scoop soil.');
       return;
     }
-    if (this.hasCargoAt(p.x, p.z)) {
+    if (!this.canWorkGround(p.x, p.z)) {
       this.on.notice('Aim at open ground to dig.');
       return;
     }
     const ground = this.terrain.height(p.x, p.z);
+    const surface = ground - e.chassis.position.y;
     if (ground <= -2.58) {
       this.on.notice('Dig alongside the hole to widen it.');
       return;
     }
     this.startMotion('scoop', [
-      { to: { tipY: ground + 0.02, curl: 0.46 }, time: 0.56 },
+      { to: { tipY: surface + 0.02, curl: 0.46 }, time: 0.56 },
       {
-        to: { tipY: ground - 0.19, curl: -0.8 },
+        to: { tipY: surface - 0.19, curl: -0.8 },
         time: 0.48,
         done: () => {
-          e.load = this.terrain.move(p.x, p.z, -BUCKET_CAPACITY, e.yaw);
+          e.load = this.terrain.move(p.x, p.z, -BUCKET_CAPACITY, e.workingYaw);
+          if (e.load > 0) this.digSpot.copy(p);
           this.dirt.spawn(v(p.x, ground + 0.12, p.z), 18, ground - 0.08);
           this.on.sound('dig');
         },
       },
       {
-        to: { tipY: Math.min(3.85, Math.max(1.48, ground + 1.3)), curl: -0.91 },
+        to: { tipY: Math.min(3.85, Math.max(1.48, surface + 1.3)), curl: -0.91 },
         time: 0.55,
         done: () => {
           this.on.notice(
@@ -401,8 +429,8 @@ export class Simulation {
       p = e.point(),
       truck = this.truck;
     const bed = truck.insideBed(p.x, p.z, 0.035);
-    if (this.hasCargoAt(p.x, p.z)) {
-      this.on.notice('Move the bucket clear of the forklift and pallets.');
+    if (!bed && !this.canWorkGround(p.x, p.z)) {
+      this.on.notice('Move the bucket over open ground or the truck bed.');
       return;
     }
     if (truck.overBody(p.x, p.z) && !bed) {
@@ -418,8 +446,8 @@ export class Simulation {
       return;
     }
     const releaseY = bed
-      ? truck.bedCenter().y + 0.48
-      : Math.max(this.terrain.height(p.x, p.z) + 0.85, e.tipY);
+      ? truck.bedCenter().y - e.chassis.position.y + 0.48
+      : Math.max(this.terrain.height(p.x, p.z) - e.chassis.position.y + 0.85, e.tipY);
     this.startMotion('dump', [
       { to: { tipY: releaseY }, time: 0.32 },
       { to: { curl: 0.69 }, time: 0.51, done: () => this.transfer(e.point()) },
@@ -439,8 +467,8 @@ export class Simulation {
       this.aimedTruck = true;
       this.dirt.spawn(p, 30, t.root.position.y + 1.45 + (t.fill / TRUCK_CAPACITY) * 0.76);
       this.on.notice('Truck bed loaded · ' + t.fill.toFixed(1) + ' m³ aboard.');
-    } else if (!t.overBody(p.x, p.z) && !this.hasCargoAt(p.x, p.z)) {
-      moved = this.terrain.move(p.x, p.z, e.load, e.yaw);
+    } else if (!t.overBody(p.x, p.z) && this.canWorkGround(p.x, p.z)) {
+      moved = this.terrain.move(p.x, p.z, e.load, e.workingYaw);
       this.dirt.spawn(p, 30, this.terrain.height(p.x, p.z));
       this.aimedTruck = false;
       this.on.notice('Soil deposited on the ground.');
@@ -463,6 +491,7 @@ export class Simulation {
       return;
     }
     if (this.anim) return;
+    this.setTravelMode(false);
     if (this.excavator.load > 0.001) this.unloadBucket();
     else this.scoop();
   }
@@ -482,16 +511,19 @@ export class Simulation {
   get palletsDelivered() {
     return deliveredCount(this.cargo, this.forklift.held);
   }
-  hasCargoAt(x, z) {
+  canWorkGround(x, z) {
     return (
-      containsPoint(this.forklift.bodyArea(), x, z) ||
-      this.cargo.some((load) => containsPoint(cargoFootprint(load), x, z))
+      insideYard(x, z) &&
+      !containsPoint(this.excavator.bodyArea(), x, z) &&
+      !containsPoint(this.forklift.bodyArea(), x, z) &&
+      !obstructions.some((solid) => containsPoint(solid, x, z)) &&
+      !this.cargo.some((load) => containsPoint(cargoFootprint(load), x, z))
     );
   }
   clearYard(area) {
     if (obstructions.some((obstacle) => overlaps(area, obstacle))) return false;
     for (const [x, z] of [[area.x, area.z], ...corners(area)]) {
-      if (Math.abs(x) > 23.7 || z < -23.15 || z > 23.75) return false;
+      if (!insideYard(x, z)) return false;
       const height = this.terrain.height(x, z);
       if (height > 1 || height < -1.1) return false;
     }
@@ -500,16 +532,24 @@ export class Simulation {
   canDrive(vehicle) {
     const fork = this.forklift,
       truck = footprint(this.truck.root, 1.18, 3.34, -0.1),
+      tracks = this.excavator.bodyArea(),
       body = fork.bodyArea(),
       tines = fork.forkArea();
-    if (overlaps(truck, body) || overlaps(truck, tines)) return false;
-    if (vehicle === this.truck)
+    if (vehicle !== fork) {
+      const moving = vehicle === this.truck ? truck : tracks;
       return (
-        this.clearYard(truck) && !this.cargo.some((load) => overlaps(truck, cargoFootprint(load)))
+        !overlaps(truck, tracks) &&
+        !overlaps(moving, body) &&
+        !overlaps(moving, tines) &&
+        this.clearYard(moving) &&
+        !this.cargo.some((load) => overlaps(moving, cargoFootprint(load)))
       );
-    if (!this.clearYard(body) || !this.clearYard(tines)) return false;
+    }
+    const blocked = (area) =>
+      overlaps(area, truck) || overlaps(area, tracks) || !this.clearYard(area);
+    if (blocked(body) || blocked(tines)) return false;
     const carried = fork.held && cargoFootprint(fork.held);
-    if (carried && (!this.clearYard(carried) || overlaps(carried, truck))) return false;
+    if (carried && blocked(carried)) return false;
     for (const load of this.cargo) {
       if (load === fork.held) continue;
       const pallet = cargoFootprint(load);
@@ -537,7 +577,7 @@ export class Simulation {
     e.reach = clamp(e.reach + reach * dt * 1.48, 2.08, 7.7);
     e.tipY = clamp(
       e.tipY + lift * dt * 1.44,
-      onTruck ? this.truck.bedCenter().y + 0.12 : ground - 0.2,
+      (onTruck ? this.truck.bedCenter().y + 0.12 : ground - 0.2) - e.chassis.position.y,
       4.75
     );
     e.curl = clamp(e.curl + curl * dt * 1.38, -1.22, 0.85);
@@ -549,10 +589,11 @@ export class Simulation {
       e.curl < -0.62 &&
       e.load < 0.001 &&
       !this.truck.overBody(end.x, end.z) &&
-      !this.hasCargoAt(end.x, end.z) &&
+      this.canWorkGround(end.x, end.z) &&
       end.y <= this.terrain.height(end.x, end.z) + 0.17
     ) {
-      e.load = this.terrain.move(end.x, end.z, -BUCKET_CAPACITY, e.yaw);
+      e.load = this.terrain.move(end.x, end.z, -BUCKET_CAPACITY, e.workingYaw);
+      if (e.load > 0) this.digSpot.copy(end);
       this.dirt.spawn(end, 14, ground - 0.1);
       this.on.sound('dig');
       this.on.changed();
@@ -601,6 +642,8 @@ export class Simulation {
     if (
       this.anim ||
       this.keys.size ||
+      this.excavator.leftSpeed ||
+      this.excavator.rightSpeed ||
       Math.abs(this.truck.speed) > 0.01 ||
       Math.abs(this.forklift.speed) > 0.01 ||
       this.forklift.target !== null ||
@@ -609,7 +652,21 @@ export class Simulation {
     )
       this.renderer.shadowMap.needsUpdate = true;
     if (this.anim) this.advanceMotion(dt);
-    else if (this.vehicle === 'excavator') this.manualArm(dt);
+    else if (this.vehicle === 'excavator') {
+      if (this.travelMode) {
+        const e = this.excavator;
+        const swing = this.axis('KeyQ', 'KeyE');
+        if (swing) {
+          e.yaw += swing * dt * 0.67;
+          e.update();
+        }
+        e.drive(dt, this.axis('KeyW', 'KeyS'), this.axis('KeyA', 'KeyD'), this.terrain, (machine) =>
+          this.canDrive(machine)
+        );
+        const p = e.point();
+        this.aimedTruck = this.truck.insideBed(p.x, p.z);
+      } else this.manualArm(dt);
+    }
     if (this.vehicle === 'truck') {
       const t = this.truck;
       const canMove = !t.tipping && t.tip < 0.02;

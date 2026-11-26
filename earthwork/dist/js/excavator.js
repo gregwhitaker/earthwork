@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { footprint, moveChassis } from './driving.js';
 import {
   v,
   group,
@@ -24,6 +25,9 @@ import {
 } from './model.js';
 
 export const BUCKET_CAPACITY = 0.5;
+const TRACK_GAUGE = 2.12,
+  TRAVEL_SPEED = 1.55,
+  DEFAULT_REACH = 5.28;
 const L1 = 5.15,
   L2 = 3.45,
   baseY = 1.2,
@@ -463,10 +467,53 @@ function cab(house) {
   box(glassGroup, x, 2.92, 0.99, 1.96, 1.12, 0.014, glass);
   return glassGroup;
 }
-function undercarriage(scene, turret) {
-  const base = group(scene);
+function trackBelt(chassis, x) {
+  const belt = group(chassis, x, 0, 0);
+  const count = 48,
+    run = 3.52,
+    radius = 0.39,
+    arc = Math.PI * radius;
+  const pitch = (2 * (run + arc)) / count;
+  const shoes = new T.InstancedMesh(new T.BoxGeometry(0.69, 0.12, 0.158), mats.steel, count);
+  const cleats = new T.InstancedMesh(new T.BoxGeometry(0.69, 0.037, 0.044), mats.worn, count);
+  for (const parts of [shoes, cleats]) {
+    parts.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    parts.castShadow = parts.receiveShadow = true;
+    belt.add(parts);
+  }
+  const pad = new T.Object3D();
+  return (distance) => {
+    const phase = T.MathUtils.euclideanModulo(distance, pitch);
+    for (let i = 0; i < count; i++) {
+      const s = i * pitch + phase;
+      let angle = 0,
+        z;
+      if (s < run) z = run / 2 - s;
+      else if (s < run + arc) {
+        angle = -(s - run) / radius;
+        z = -run / 2 + radius * Math.sin(angle);
+      } else if (s < 2 * run + arc) {
+        angle = -Math.PI;
+        z = -run / 2 + s - run - arc;
+      } else {
+        angle = -Math.PI - (s - 2 * run - arc) / radius;
+        z = run / 2 + radius * Math.sin(angle);
+      }
+      pad.rotation.x = angle;
+      pad.position.set(0, 0.5 + radius * Math.cos(angle), z);
+      pad.updateMatrix();
+      shoes.setMatrixAt(i, pad.matrix);
+      pad.translateY(0.071);
+      pad.updateMatrix();
+      cleats.setMatrixAt(i, pad.matrix);
+    }
+    shoes.instanceMatrix.needsUpdate = cleats.instanceMatrix.needsUpdate = true;
+  };
+}
+function undercarriage(chassis, turret) {
+  const base = group(chassis);
   for (const side of [-1, 1]) {
-    const track = group(base, side * 1.06, 0, 0);
+    const track = group(base, (side * TRACK_GAUGE) / 2, 0, 0);
     box(track, 0, 0.5, 0, 0.6, 0.7, 3.64, mats.rubber);
     for (const z of [-1.71, -1.0, -0.29, 0.42, 1.13, 1.75]) {
       const wheel = cyl(track, 0, 0.52, z, 0.34, 0.34, 0.65, mats.dark);
@@ -474,28 +521,6 @@ function undercarriage(scene, turret) {
       const hub = cyl(track, 0.34 * side, 0.53, z, 0.17, 0.17, 0.05, mats.pin);
       hub.rotation.z = Math.PI / 2;
     }
-    for (let i = 0; i < 19; i++) {
-      for (const y of [0.11, 0.89]) {
-        const z = -1.76 + i * 0.195;
-        box(track, 0, y, z, 0.69, 0.12, 0.158, mats.steel);
-        box(track, 0, y + (y > 0.5 ? 0.08 : -0.06), z, 0.69, 0.037, 0.044, mats.worn);
-      }
-    }
-    for (const end of [-1, 1])
-      for (let i = 1; i < 6; i++) {
-        const a = (i * Math.PI) / 6;
-        const pad = box(
-          track,
-          0,
-          0.5 + 0.39 * Math.cos(a),
-          end * (1.76 + 0.39 * Math.sin(a)),
-          0.69,
-          0.13,
-          0.17,
-          mats.steel
-        );
-        pad.rotation.x = end * a;
-      }
   }
   box(base, 0, 0.67, 0, 1.98, 0.39, 2.51, mats.dark);
   cyl(base, 0, 1.01, 0, 1.26, 1.29, 0.23, mats.pin, 32);
@@ -510,11 +535,13 @@ function undercarriage(scene, turret) {
   cyl(engine, 1.2, 2.21, 1.13, 0.065, 0.075, 0.43, mats.dark);
   placard(engine, 0.37, 1.62, 1.867, 1.36, 0.25, wording('EARTHWORK', { fg: '#302b21' }));
   batch(engine);
+  return [trackBelt(chassis, -TRACK_GAUGE / 2), trackBelt(chassis, TRACK_GAUGE / 2)];
 }
 export class Excavator {
   constructor(scene) {
-    this.root = group(scene);
-    undercarriage(scene, this.root);
+    this.chassis = group(scene);
+    this.root = group(this.chassis);
+    this.belts = undercarriage(this.chassis, this.root);
     this.glass = cab(this.root);
     this.flash = beacon(this.root, -0.17, 3.75, 0.79, 0.21);
     this.cameraMount = group(this.root, -1.02, 2.97, 0.71);
@@ -554,19 +581,60 @@ export class Excavator {
     );
     this.reset();
   }
-  reset() {
+  reset(groundHeight = 0) {
+    this.chassis.position.set(0, groundHeight, 0);
+    this.chassis.rotation.y = 0;
+    this.stopTracks();
+    this.trackDistances = [0, 0];
+    this.belts.forEach((setDistance) => setDistance(0));
     this.yaw = 0;
-    this.reach = 5.28;
+    this.reach = DEFAULT_REACH;
     this.tipY = 0.79;
     this.curl = 0.04;
     this.load = 0;
     this.update();
   }
+  get speed() {
+    return (this.leftSpeed + this.rightSpeed) / 2;
+  }
+  get workingYaw() {
+    return this.chassis.rotation.y + this.yaw;
+  }
+  stopTracks() {
+    this.leftSpeed = this.rightSpeed = 0;
+  }
+  bodyArea() {
+    return footprint(this.chassis, 1.67, 2.19);
+  }
+  drive(dt, throttle, turn, terrain, allowed) {
+    const travel = throttle * TRAVEL_SPEED,
+      differential = turn * 0.78;
+    const scale = Math.max(1, (Math.abs(travel) + Math.abs(differential)) / TRAVEL_SPEED);
+    const accelerate = (speed, target) => {
+      const next = T.MathUtils.damp(speed, target / scale, target ? 3.2 : 7.5, dt);
+      return Math.abs(next) < 0.012 ? 0 : next;
+    };
+    this.leftSpeed = accelerate(this.leftSpeed, travel - differential);
+    this.rightSpeed = accelerate(this.rightSpeed, travel + differential);
+    const rotation = ((this.rightSpeed - this.leftSpeed) * dt) / TRACK_GAUGE;
+    if (!moveChassis(this.chassis, dt, this.speed * dt, rotation, terrain, () => allowed(this))) {
+      this.stopTracks();
+      return;
+    }
+    if (!dt || (!this.leftSpeed && !this.rightSpeed)) return;
+    this.trackDistances[0] += this.leftSpeed * dt;
+    this.trackDistances[1] += this.rightSpeed * dt;
+    this.belts.forEach((setDistance, i) => setDistance(this.trackDistances[i]));
+  }
+  defaultDigSpot() {
+    return this.chassis.localToWorld(v(baseX, 0, baseZ - DEFAULT_REACH));
+  }
   solveTarget(x, z) {
-    const r = Math.hypot(x, z);
+    const local = this.chassis.worldToLocal(v(x, this.chassis.position.y, z));
+    const r = Math.hypot(local.x, local.z);
     if (r < baseX) return null;
     const reach = Math.sqrt(r * r - baseX * baseX) + baseZ;
-    return { reach, yaw: Math.atan2(-x, -z) + Math.atan2(baseX, reach - baseZ) };
+    return { reach, yaw: Math.atan2(-local.x, -local.z) + Math.atan2(baseX, reach - baseZ) };
   }
   point() {
     return this.lip.getWorldPosition(v());

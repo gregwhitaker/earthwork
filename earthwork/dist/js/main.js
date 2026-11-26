@@ -14,7 +14,7 @@ const setIcon = (id, name) =>
     .querySelector('use')
     .setAttribute('href', '#i-' + name);
 let toastTimer = 0,
-  lastVehicle = '',
+  lastLayout = '',
   lastHeading = '',
   hudSignature = '',
   lastTime,
@@ -96,10 +96,28 @@ controls.forklift = [
   ],
 ];
 const vehicleOrder = Object.keys(controls);
-function controlDeck(vehicle) {
+const trackControls = [
+  controls.truck[0],
+  [
+    'Turn tracks',
+    [
+      ['A', 'KeyA', 'Pivot tracks left'],
+      ['D', 'KeyD', 'Pivot tracks right'],
+    ],
+  ],
+  [
+    'Swing cab',
+    [
+      ['Q', 'KeyQ', 'Swing cab left'],
+      ['E', 'KeyE', 'Swing cab right'],
+    ],
+  ],
+  ['Face tracks', [['C', 'KeyC', 'Face the tracks']]],
+];
+function controlDeck(vehicle, drivingTracks) {
   const list = $('control-groups');
   list.replaceChildren();
-  for (const [name, keys] of controls[vehicle]) {
+  for (const [name, keys] of drivingTracks ? trackControls : controls[vehicle]) {
     const g = document.createElement('div');
     g.className = 'control-group';
     const pair = document.createElement('div');
@@ -156,20 +174,26 @@ function sync() {
   const { excavator, truck, forklift, vehicle } = game;
   const digging = vehicle === 'excavator',
     lifting = vehicle === 'forklift';
+  const drivingTracks = digging && game.travelMode;
+  const showDepth = digging && !drivingTracks;
+  const layout = drivingTracks ? 'tracks' : vehicle;
   const instrument = digging ? 'bucket' : lifting ? 'forklift' : 'truck';
-  if (lastVehicle !== vehicle) {
-    lastVehicle = vehicle;
-    controlDeck(vehicle);
+  if (lastLayout !== layout) {
+    lastLayout = layout;
+    controlDeck(vehicle, drivingTracks);
+    $('excavator-modes').hidden = !digging;
+    $('dig-mode').setAttribute('aria-pressed', String(!drivingTracks));
+    $('drive-mode').setAttribute('aria-pressed', String(drivingTracks));
     for (const name of vehicleOrder)
       $('choose-' + name).setAttribute('aria-pressed', String(name === vehicle));
     $('load-label').textContent = digging ? 'Bucket load' : lifting ? 'Fork height' : 'Bed load';
-    $('secondary-label').textContent = digging ? 'Dig depth' : 'Speed';
-    $('secondary-note').textContent = digging ? 'BELOW GRADE' : 'GROUND SPEED';
+    $('secondary-label').textContent = showDepth ? 'Dig depth' : 'Speed';
+    $('secondary-note').textContent = showDepth ? 'BELOW GRADE' : 'GROUND SPEED';
     $('load-ticks').hidden = lifting;
     $('fork-spacing').hidden = !lifting;
     setIcon('load-icon', instrument);
     setIcon('action-icon', instrument);
-    setIcon('secondary-icon', digging ? 'depth' : 'gauge');
+    setIcon('secondary-icon', showDepth ? 'depth' : 'gauge');
     $('hint').innerHTML =
       svg('mouse') +
       (digging
@@ -215,7 +239,7 @@ function sync() {
       : truck.fill.toFixed(1);
   const unit = digging ? '%' : lifting ? 'm' : 'm³';
   const p = excavator.point();
-  const secondary = digging
+  const secondary = showDepth
     ? game.terrain.depth(p.x, p.z).toFixed(1)
     : String(Math.round(Math.abs(game.machines[vehicle].speed) * 3.6));
   let action,
@@ -237,12 +261,16 @@ function sync() {
     action = loaded ? (truck.insideBed(p.x, p.z, 0.05) ? 'Load truck' : 'Dump soil') : 'Scoop soil';
   const ticks = Math.round(fraction * 10);
   const spacing = lifting ? Math.round(forklift.spacing * 100) : null;
+  const trackHeading = drivingTracks
+    ? ((Math.round((-excavator.chassis.rotation.y * 180) / Math.PI) % 360) + 360) % 360
+    : null;
   const signature = [
-    vehicle,
+    layout,
     load,
     secondary,
     ticks,
     spacing,
+    trackHeading,
     title,
     description,
     progressText,
@@ -259,7 +287,9 @@ function sync() {
     $('task-percent').textContent = progressText;
     document.querySelector('.progress-track').setAttribute('aria-valuenow', String(progress));
     $('load-value').innerHTML = load + `<span>${unit}</span>`;
-    $('secondary-value').innerHTML = secondary + `<span>${digging ? 'm' : 'km/h'}</span>`;
+    $('secondary-value').innerHTML = secondary + `<span>${showDepth ? 'm' : 'km/h'}</span>`;
+    if (drivingTracks)
+      $('secondary-note').textContent = `TRACKS ${String(trackHeading).padStart(3, '0')}°`;
     if (lifting) $('fork-spacing').textContent = `SPACING ${spacing} cm`;
     [...$('load-ticks').children].forEach((el, i) => el.classList.toggle('on', i < ticks));
     $('action-label').textContent = action;
@@ -275,7 +305,7 @@ function clearHeld() {
   game?.clearInput();
   document.querySelectorAll('.held').forEach((b) => b.classList.remove('held'));
 }
-const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Approach from any of the four sides. Match the fork spacing to the openings and drive straight in with the forks low. The spacing gauge measures between the centers of the forks. Back clear of the pallet to use the full range. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Narrow / spread forks</dt><dd>Q / E</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
+const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><p>Choose Dig or Drive, or press T to switch. In Drive, the tracks keep their heading when you swing the cab. Press C to face forward along them.</p><dl><div><dt>Drive forward / reverse</dt><dd>W / S</dd></div><div><dt>Turn tracks left / right</dt><dd>A / D</dd></div><div><dt>Swing cab while driving</dt><dd>Q / E</dd></div></dl><h3>Dig controls</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Approach from any of the four sides. Match the fork spacing to the openings and drive straight in with the forks low. The spacing gauge measures between the centers of the forks. Back clear of the pallet to use the full range. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Narrow / spread forks</dt><dd>Q / E</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
 function setPanel(next) {
   if (!wasReady) return;
   game.paused = true;
@@ -307,7 +337,7 @@ function setPanel(next) {
     make('Restart site', () => {
       game.reset();
       hudSignature = '';
-      lastVehicle = '';
+      lastLayout = '';
       closePanel();
       sync();
       notice('North Yard restarted.');
@@ -353,6 +383,16 @@ document.addEventListener(
 );
 $('load-ticks').innerHTML = '<i></i>'.repeat(10);
 for (const name of vehicleOrder) $('choose-' + name).onclick = () => selectVehicle(name);
+for (const [id, drive] of [
+  ['dig-mode', false],
+  ['drive-mode', true],
+]) {
+  $(id).onclick = () => {
+    if (!wasReady) return;
+    game.setTravelMode(drive);
+    canvas.focus({ preventScroll: true });
+  };
+}
 $('action').onclick = () => {
   if (wasReady) game.action();
 };
@@ -375,7 +415,11 @@ const movement = new Set(['KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyQ', 'KeyE', 'Arrow
 function press(code) {
   if (!wasReady || game.paused) return;
   if (code === 'KeyC') {
-    game.setView(0, 0);
+    game.centerView();
+    return;
+  }
+  if (code === 'KeyT') {
+    game.setTravelMode(!game.travelMode);
     return;
   }
   if (code === 'KeyV') {
@@ -415,7 +459,7 @@ window.addEventListener('keydown', (e) => {
     return;
   if (
     !movement.has(code) &&
-    !['Space', 'KeyV', 'KeyC', 'KeyP', 'KeyH', 'KeyM', 'Escape'].includes(code)
+    !['Space', 'KeyV', 'KeyC', 'KeyT', 'KeyP', 'KeyH', 'KeyM', 'Escape'].includes(code)
   )
     return;
   e.preventDefault();
@@ -454,8 +498,7 @@ $('control-groups').addEventListener('pointerup', (e) => {
     !game.anim &&
     !game.paused
   ) {
-    if (game.vehicle === 'excavator') game.manualArm(0.065);
-    else game.tick(0.065);
+    game.tick(0.065);
   }
   keyTimes.delete(e.pointerId);
   release(b.dataset.key);
