@@ -2,7 +2,7 @@
 
 Earthwork is a first-person construction simulator set in North Yard. Dig a trench with the excavator, haul the soil away in the dump truck, or take the forklift and stock the pallet bay.
 
-**[Play Earthwork in your browser](https://gregwhitaker.github.io/earthwork/)** · [Screenshots](#screenshots) · [Controls](#controls) · [Run locally](#run-locally)
+**[Play Earthwork in your browser](https://gregwhitaker.github.io/earthwork/)**
 
 ![The excavator drops soil into the orange dump truck beside a fresh cut in North Yard.](docs/screenshots/north-yard.webp)
 
@@ -18,16 +18,6 @@ Driving leaves marks in the dirt. The dump truck stamps wide chevrons, the forkl
 
 The forklift starts with its forks under the water drums. Press **Space** to lift the pallet, drive it into the striped bay, then stop and press **Space** to set it down. For the form oil and bagged cement, approach from any side with the forks low. Use **Q / E** to match the spacing of the two openings and drive straight in.
 
-## Screenshots
-
-| Digging in the excavator | Hauling in the dump truck |
-| --- | --- |
-| [![A full bucket hangs above the excavation, with the truck alongside and the depth gauge reading 1.8 m.](docs/screenshots/excavator-dig.webp)](docs/screenshots/excavator-dig.webp) | [![The excavator through the dump truck windshield as the driver hauls 2.0 m³ across the yard.](docs/screenshots/dump-truck-haul.webp)](docs/screenshots/dump-truck-haul.webp) |
-
-| Tipping a spoil pile | Delivering the water drums |
-| --- | --- |
-| [![Soil slides from the raised dump bed into a pile behind the rear wheels, seen from the excavator cab.](docs/screenshots/dump-truck-tipping.webp)](docs/screenshots/dump-truck-tipping.webp) | [![Two blue water drums ride on the forks as the forklift crosses the yellow markings at the pallet bay.](docs/screenshots/forklift-delivery.webp)](docs/screenshots/forklift-delivery.webp) |
-
 ## Controls
 
 Choose a cab in the toolbar or press **V** to cycle through them. In the excavator, select **Dig** or **Drive**, or press **T** to switch. The on-screen controls also work with touch.
@@ -40,7 +30,7 @@ Choose a cab in the toolbar or press **V** to cycle through them. In the excavat
 | **↑ / ↓** | Extend / retract stick | — | — | Raise / lower forks |
 | **Space** | Scoop / empty bucket | Enter Dig and use bucket | Tip / lower bed when stopped | Pick up / set down when stopped |
 
-Drag to look around. **C** centers the view and, in excavator Drive mode, faces the cab along the tracks. **H** opens the operator guide, **P** pauses, and **M** toggles sound. Use **F** or the toolbar's fullscreen button to enter fullscreen and **Esc** to leave it.
+Drag to look around. **C** centers the view and, in excavator Drive mode, aligns the cab with the tracks. **H** opens the operator guide, **P** pauses, and **M** toggles sound. **F** or the toolbar's fullscreen button toggles fullscreen. **Esc** exits it.
 
 ## Run locally
 
