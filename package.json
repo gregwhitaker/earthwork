@@ -1,0 +1,9 @@
+{
+  "name": "earthwork-excavator-simulator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node earthwork/serve.mjs",
+    "dev": "node earthwork/serve.mjs"
+  }
+}
