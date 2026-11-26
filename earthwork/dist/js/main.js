@@ -87,7 +87,13 @@ controls.forklift = [
       ['↓', 'ArrowDown', 'Lower forks'],
     ],
   ],
-  controls.truck[3],
+  [
+    'Fork spacing',
+    [
+      ['Q', 'KeyQ', 'Move forks closer'],
+      ['E', 'KeyE', 'Spread forks apart'],
+    ],
+  ],
 ];
 const vehicleOrder = Object.keys(controls);
 function controlDeck(vehicle) {
@@ -159,6 +165,8 @@ function sync() {
     $('load-label').textContent = digging ? 'Bucket load' : lifting ? 'Fork height' : 'Bed load';
     $('secondary-label').textContent = digging ? 'Dig depth' : 'Speed';
     $('secondary-note').textContent = digging ? 'BELOW GRADE' : 'GROUND SPEED';
+    $('load-ticks').hidden = lifting;
+    $('fork-spacing').hidden = !lifting;
     setIcon('load-icon', instrument);
     setIcon('action-icon', instrument);
     setIcon('secondary-icon', digging ? 'depth' : 'gauge');
@@ -228,11 +236,13 @@ function sync() {
   } else
     action = loaded ? (truck.insideBed(p.x, p.z, 0.05) ? 'Load truck' : 'Dump soil') : 'Scoop soil';
   const ticks = Math.round(fraction * 10);
+  const spacing = lifting ? Math.round(forklift.spacing * 100) : null;
   const signature = [
     vehicle,
     load,
     secondary,
     ticks,
+    spacing,
     title,
     description,
     progressText,
@@ -250,6 +260,7 @@ function sync() {
     document.querySelector('.progress-track').setAttribute('aria-valuenow', String(progress));
     $('load-value').innerHTML = load + `<span>${unit}</span>`;
     $('secondary-value').innerHTML = secondary + `<span>${digging ? 'm' : 'km/h'}</span>`;
+    if (lifting) $('fork-spacing').textContent = `SPACING ${spacing} cm`;
     [...$('load-ticks').children].forEach((el, i) => el.classList.toggle('on', i < ticks));
     $('action-label').textContent = action;
     $('action').disabled = disabled;
@@ -264,7 +275,7 @@ function clearHeld() {
   game?.clearInput();
   document.querySelectorAll('.held').forEach((b) => b.classList.remove('held'));
 }
-const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Drive straight into a pallet with the forks low. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
+const guide = `<p>Click the ground or the truck to position the bucket. Drag the view to look around the cab.</p><h3>Excavator</h3><dl><div><dt>Swing left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower boom</dt><dd>W / S</dd></div><div><dt>Extend / retract stick</dt><dd>↑ / ↓</dd></div><div><dt>Curl / open bucket</dt><dd>Q / E</dd></div><div><dt>Scoop or dump soil</dt><dd>Space</dd></div></dl><h3>Dump truck</h3><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Tip / lower bed when stopped</dt><dd>Space</dd></div></dl><h3>Forklift</h3><p>Approach from any of the four sides. Match the fork spacing to the openings and drive straight in with the forks low. The spacing gauge measures between the centers of the forks. Back clear of the pallet to use the full range. Lift it, carry it to the striped bay, then lower it onto the ground.</p><dl><div><dt>Drive / reverse</dt><dd>W / S</dd></div><div><dt>Steer left / right</dt><dd>A / D</dd></div><div><dt>Raise / lower forks</dt><dd>↑ / ↓</dd></div><div><dt>Narrow / spread forks</dt><dd>Q / E</dd></div><div><dt>Pick up / set down when stopped</dt><dd>Space</dd></div></dl><h3>All vehicles</h3><dl><div><dt>Switch cab</dt><dd>V</dd></div><div><dt>Center view</dt><dd>C</dd></div><div><dt>Pause</dt><dd>P / Esc</dd></div></dl>`;
 function setPanel(next) {
   if (!wasReady) return;
   game.paused = true;

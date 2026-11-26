@@ -16,11 +16,12 @@ import { footprint, fixedFootprint, containsPoint, corners, supportHeight } from
 export const PALLET_WIDTH = 1.34,
   PALLET_DEPTH = 1.16,
   SLOT_TOP = 0.143;
+export const PALLET_BLOCK = { x: 0.54, z: 0.48, width: 0.16, depth: 0.17 };
 export const DELIVERY_BAY = fixedFootprint(15.8, -5.7, 3.05, 3.15);
 const loads = [
   { label: 'Water drums', kind: 'water', x: 7.43, z: -5.7, yaw: -Math.PI / 2 },
-  { label: 'Form oil drums', kind: 'oil', x: 7.55, z: -2.96, yaw: -Math.PI / 2 },
-  { label: 'Bagged cement', kind: 'cement', x: 7.67, z: -8.49, yaw: -Math.PI / 2 },
+  { label: 'Form oil drums', kind: 'oil', x: 9.6, z: -2.96, yaw: -Math.PI / 2 },
+  { label: 'Bagged cement', kind: 'cement', x: 13.25, z: -9.75, yaw: -Math.PI / 2 },
   { label: 'Empty pallets', layers: 4, x: -11, z: -17.4, yaw: 0 },
   { label: 'Empty pallets', layers: 2, x: -12.8, z: -18, yaw: 0 },
   { label: 'Empty pallets', layers: 3, x: 11.3, z: 2.4, yaw: 0 },
@@ -47,13 +48,29 @@ const drumLabels = {
 };
 const cementLabel = wording('CEMENT', { fg: '#3f5148', bg: '#c9bb99' });
 function palletBase(p, y) {
-  for (const z of [-0.49, 0, 0.49]) box(p, 0, y + 0.018, z, PALLET_WIDTH, 0.036, 0.14, timber);
-  for (const x of [-0.54, 0, 0.54])
-    for (const z of [-0.48, 0, 0.48]) box(p, x, y + 0.085, z, 0.16, 0.105, 0.17, timberDark);
-  for (const x of [-0.54, 0, 0.54]) box(p, x, y + 0.135, 0, 0.16, 0.017, PALLET_DEPTH, timberDark);
+  // The nine blocks leave two fork openings on every face, below the deck runners.
+  const foot = 0.018,
+    runner = 0.014,
+    slat = 0.028,
+    block = PALLET_BLOCK;
+  for (const z of [-0.49, 0, 0.49]) box(p, 0, y + foot / 2, z, PALLET_WIDTH, foot, 0.14, timber);
+  for (const x of [-block.x, 0, block.x]) {
+    for (const z of [-block.z, 0, block.z])
+      box(
+        p,
+        x,
+        y + (foot + SLOT_TOP) / 2,
+        z,
+        block.width,
+        SLOT_TOP - foot,
+        block.depth,
+        timberDark
+      );
+    box(p, x, y + SLOT_TOP + runner / 2, 0, block.width, runner, PALLET_DEPTH, timberDark);
+  }
   for (let i = 0; i < 6; i++) {
     const z = -0.49 + i * 0.195;
-    box(p, 0, y + SLOT_TOP + 0.021, z, PALLET_WIDTH, 0.042, 0.169, timber);
+    box(p, 0, y + SLOT_TOP + runner + slat / 2, z, PALLET_WIDTH, slat, 0.169, timber);
   }
 }
 function drum(p, x, z, kind) {

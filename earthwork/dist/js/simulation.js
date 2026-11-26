@@ -622,10 +622,12 @@ export class Simulation {
       );
     }
     const operatingForklift = this.vehicle === 'forklift';
-    if (operatingForklift)
+    if (operatingForklift) {
+      this.forklift.adjustSpacing(dt, this.axis('KeyE', 'KeyQ'));
       this.forklift.drive(dt, this.axis('KeyW', 'KeyS'), this.axis('KeyA', 'KeyD'), (vehicle) =>
         this.canDrive(vehicle)
       );
+    }
     this.forklift.lift(dt, operatingForklift ? this.axis('ArrowUp', 'ArrowDown') : 0);
     this.tipBed(dt);
     if (this.groundVersion !== this.terrain.positions.version) {

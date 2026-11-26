@@ -20,12 +20,16 @@ import {
   clamp,
   rad,
 } from './model.js';
-import { driveChassis, footprint, supportHeight } from './driving.js';
-import { cargoFootprint, SLOT_TOP } from './cargo.js';
+import { driveChassis, footprint, overlaps, supportHeight } from './driving.js';
+import { cargoFootprint, PALLET_BLOCK, SLOT_TOP } from './cargo.js';
 
 export const MAX_FORK_HEIGHT = 2.72;
 const LOW = 0.08,
   CARRY = 0.64;
+const TINE_WIDTH = 0.106;
+const MIN_SPACING = 0.18,
+  MAX_SPACING = 1.02,
+  DEFAULT_SPACING = 0.54;
 const liftHandling = {
   forward: 3.8,
   reverse: 2.65,
@@ -194,9 +198,11 @@ function mast(root) {
   }
   box(steel, 0, 0.85, -1.1, 1.2, 0.046, 0.055, frame);
   for (const x of [-0.31, 0, 0.31]) box(steel, x, 0.675, -1.1, 0.028, 0.315, 0.041, frame);
-  for (const side of [-1, 1]) {
-    const fork = group(steel, side * 0.316, 0, -1.15);
+  const tines = [-1, 1].map((side) => {
+    const fork = group(carriage, (side * DEFAULT_SPACING) / 2, 0, -1.15);
     fork.rotation.y = Math.PI / 2;
+    box(fork, -0.055, 0.5, 0, 0.11, 0.12, TINE_WIDTH + 0.035, frame);
+    box(fork, -0.042, 0.567, 0, 0.09, 0.018, TINE_WIDTH + 0.014, bright);
     profile(
       fork,
       [
@@ -211,13 +217,14 @@ function mast(root) {
         [0.025, -0.061],
         [-0.073, 0.018],
       ],
-      0.106,
+      TINE_WIDTH,
       mats.worn,
       { bevel: 0.007 }
     );
-  }
+    return batch(fork);
+  });
   batch(steel);
-  return { telescoping, carriage };
+  return { telescoping, carriage, tines };
 }
 
 export class Forklift {
@@ -249,6 +256,7 @@ export class Forklift {
     this.held = null;
     this.target = null;
     this.height = LOW;
+    this.spacing = DEFAULT_SPACING;
     this.wheels.forEach((w) => w.rotation.set(0, 0, 0));
     this.steering.rotation.z = 0;
     this.pose();
@@ -256,20 +264,50 @@ export class Forklift {
   pose() {
     this.carriage.position.y = this.height;
     this.telescoping.position.y = Math.max(0, this.height - 1.46);
+    this.tines[0].position.x = -this.spacing / 2;
+    this.tines[1].position.x = this.spacing / 2;
     this.root.updateWorldMatrix(true, true);
   }
   bodyArea() {
     return footprint(this.root, 0.72, 1.2, 0.12);
   }
-  forkArea() {
-    return footprint(this.root, 0.38, 0.63, -1.75);
+  forkArea(spacing = this.spacing) {
+    return footprint(this.root, (spacing + TINE_WIDTH) / 2, 0.63, -1.75);
   }
-  aligned(load) {
+  aligned(load, spacing = this.spacing) {
     const area = cargoFootprint(load),
       p = this.root.worldToLocal(v(area.x, 0, area.z));
-    const yaw = this.root.rotation.y;
-    const parallel = Math.abs(area.cos * Math.cos(yaw) + area.sin * Math.sin(yaw));
-    return Math.abs(p.x) < 0.235 && p.z < -1.38 && parallel > Math.cos(rad(19));
+    if (p.z >= -1.38 || Math.abs(p.x) > 0.235) return false;
+    const angle = this.root.rotation.y - Math.atan2(area.sin, area.cos);
+    const endOn = Math.abs(Math.cos(angle));
+    const sideOn = Math.abs(Math.sin(angle));
+    const facing = Math.max(endOn, sideOn);
+    if (facing < Math.cos(rad(19))) return false;
+    // Each blade must clear the center and outer blocks through the full depth of its pocket.
+    const end = endOn >= sideOn;
+    const inner = (end ? PALLET_BLOCK.width : PALLET_BLOCK.depth) / 2;
+    const outer = (end ? PALLET_BLOCK.x : PALLET_BLOCK.z) - inner;
+    const skew = Math.min(endOn, sideOn) * (end ? PALLET_BLOCK.z : PALLET_BLOCK.x);
+    const margin = (Math.abs(p.x) + TINE_WIDTH / 2 + skew) / facing;
+    const center = spacing / (2 * facing);
+    const clearanceTolerance = 0.025;
+    return (
+      center - margin >= inner - clearanceTolerance && center + margin <= outer + clearanceTolerance
+    );
+  }
+  adjustSpacing(dt, direction) {
+    if (!direction) return;
+    const next = clamp(this.spacing + direction * 0.42 * dt, MIN_SPACING, MAX_SPACING);
+    if (next === this.spacing) return;
+    const swept = this.forkArea(Math.max(this.spacing, next));
+    const tip = this.root.position.y + this.height;
+    for (const load of this.cargo) {
+      if (load !== this.held && tip > load.root.position.y + load.height + 0.065) continue;
+      if (overlaps(swept, cargoFootprint(load)) && this.aligned(load) && !this.aligned(load, next))
+        return;
+    }
+    this.spacing = next;
+    this.pose();
   }
   canEnter(load) {
     if (!this.aligned(load)) return false;
@@ -316,7 +354,7 @@ export class Forklift {
       this.notice(
         this.height > 0.2
           ? 'Lower the forks before entering the pallet.'
-          : 'Line up straight and slide both forks under a pallet.'
+          : 'Line up with both pallet openings. Use Q / E to adjust the fork spacing.'
       );
       return;
     }
