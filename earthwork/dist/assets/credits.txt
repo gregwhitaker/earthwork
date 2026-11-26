@@ -1,0 +1,7 @@
+North Yard uses the following CC0 photography from Poly Haven.
+Derelict Airfield 02 — https://polyhaven.com/a/derelict_airfield_02
+Dirt Aerial 02 — https://polyhaven.com/a/dirt_aerial_02
+Brown Mud Dry — https://polyhaven.com/a/brown_mud_dry
+
+Three.js is distributed under the MIT license included in vendor/three-LICENSE.txt.
+Barlow, Barlow Condensed, and IBM Plex Mono use the licenses included in assets/fonts/.

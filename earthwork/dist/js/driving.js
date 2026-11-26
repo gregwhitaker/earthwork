@@ -1,0 +1,85 @@
+import * as T from 'three';
+
+// Horizontal footprints use the same forward (-Z) convention as the vehicle meshes.
+export function footprint(root, halfWidth, halfLength, offsetZ = 0) {
+  root.updateWorldMatrix(true, false);
+  const m = root.matrixWorld.elements;
+  return {
+    x: m[12] + m[8] * offsetZ,
+    z: m[14] + m[10] * offsetZ,
+    cos: m[0],
+    sin: m[8],
+    halfWidth,
+    halfLength,
+  };
+}
+export function fixedFootprint(x, z, halfWidth, halfLength) {
+  return { x, z, halfWidth, halfLength, cos: 1, sin: 0 };
+}
+export function containsPoint(area, x, z) {
+  const dx = x - area.x,
+    dz = z - area.z;
+  return (
+    Math.abs(dx * area.cos - dz * area.sin) <= area.halfWidth &&
+    Math.abs(dx * area.sin + dz * area.cos) <= area.halfLength
+  );
+}
+export function overlaps(a, b) {
+  const dx = b.x - a.x,
+    dz = b.z - a.z;
+  const c = Math.abs(a.cos * b.cos + a.sin * b.sin),
+    s = Math.abs(a.sin * b.cos - a.cos * b.sin);
+  return (
+    Math.abs(dx * a.cos - dz * a.sin) < a.halfWidth + b.halfWidth * c + b.halfLength * s &&
+    Math.abs(dx * a.sin + dz * a.cos) < a.halfLength + b.halfWidth * s + b.halfLength * c &&
+    Math.abs(dx * b.cos - dz * b.sin) < b.halfWidth + a.halfWidth * c + a.halfLength * s &&
+    Math.abs(dx * b.sin + dz * b.cos) < b.halfLength + a.halfWidth * s + a.halfLength * c
+  );
+}
+export function corners(area) {
+  const points = [];
+  for (const x of [-area.halfWidth, area.halfWidth])
+    for (const z of [-area.halfLength, area.halfLength]) {
+      points.push([area.x + x * area.cos + z * area.sin, area.z - x * area.sin + z * area.cos]);
+    }
+  return points;
+}
+export function supportHeight(terrain, area) {
+  return Math.max(
+    terrain.height(area.x, area.z),
+    ...corners(area).map(([x, z]) => terrain.height(x, z))
+  );
+}
+export function driveChassis(vehicle, dt, throttle, steering, terrain, allowed, handling) {
+  vehicle.steer = T.MathUtils.damp(vehicle.steer, steering, handling.steerResponse, dt);
+  const target = throttle * (throttle < 0 ? handling.reverse : handling.forward);
+  vehicle.speed = T.MathUtils.damp(
+    vehicle.speed,
+    target,
+    throttle ? handling.acceleration : handling.drag,
+    dt
+  );
+  if (Math.abs(vehicle.speed) < 0.018) vehicle.speed = 0;
+  const root = vehicle.root,
+    oldYaw = root.rotation.y,
+    oldX = root.position.x,
+    oldZ = root.position.z;
+  let distance = vehicle.speed * dt;
+  root.rotation.y += vehicle.steer * distance * handling.turn;
+  root.position.x -= Math.sin(root.rotation.y) * distance;
+  root.position.z -= Math.cos(root.rotation.y) * distance;
+  if (distance && !allowed(vehicle)) {
+    root.position.x = oldX;
+    root.position.z = oldZ;
+    root.rotation.y = oldYaw;
+    vehicle.speed = 0;
+    distance = 0;
+  }
+  root.position.y = T.MathUtils.damp(
+    root.position.y,
+    terrain.height(root.position.x, root.position.z),
+    5,
+    dt
+  );
+  return distance;
+}
