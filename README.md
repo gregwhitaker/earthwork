@@ -16,7 +16,7 @@ Open [localhost:5173](http://localhost:5173). The game includes Three.js, textur
 
 ## Controls
 
-Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to look around, press **C** to center the view, and press **P** to pause. Use the **Fullscreen** button or press **F** to toggle fullscreen. **Esc** also exits it. The on-screen buttons work with touch.
+Choose a vehicle at the top of the screen or press **V** to switch cabs. Drag to look around, press **C** to center the view, and press **P** to pause. Select the fullscreen icon beside the sound control or press **F** to toggle fullscreen. **Esc** also exits it. The on-screen buttons work with touch.
 
 | Vehicle | Controls |
 | --- | --- |

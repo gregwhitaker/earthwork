@@ -90,7 +90,6 @@ button,
 .brand,
 .control-deck,
 .hud-panel,
-.fullscreen-button,
 .look-hint,
 .compass,
 .site-name {
@@ -216,6 +215,9 @@ button {
 .icon-button:hover {
   background: #363c35;
   color: white;
+}
+#fullscreen[aria-pressed='true'] {
+  color: #f8c857;
 }
 #viewport {
   position: relative;
@@ -404,32 +406,6 @@ button {
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
   border-bottom: 5px solid var(--gold);
-}
-.fullscreen-button {
-  position: absolute;
-  top: 23px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 6px 10px;
-  background: #1b211be0;
-  border: 1px solid #c4cebb62;
-  border-radius: 4px;
-  color: #f2f2ea;
-  font-size: 0.83rem;
-  font-weight: 600;
-}
-.fullscreen-button:hover,
-.fullscreen-button[aria-pressed='true'] {
-  background: #343a2f;
-  border-color: #a78c4e;
-  color: #ffe298;
-}
-.fullscreen-button .icon {
-  width: 16px;
-  height: 16px;
 }
 .immersive #viewport {
   overflow: visible;
@@ -783,12 +759,11 @@ dialog dd {
   .look-hint {
     left: 32px;
   }
-  .fullscreen-button,
   .instruments {
     right: 32px;
   }
 }
-@media (max-width: 960px) {
+@media (max-width: 1020px) {
   .site-name,
   .tool-rule {
     display: none;
@@ -822,14 +797,8 @@ dialog dd {
     width: 207px;
     padding: 12px 13px;
   }
-  .instruments,
-  .fullscreen-button {
-    right: 14px;
-  }
-  .fullscreen-button {
-    top: 16px;
-  }
   .instruments {
+    right: 14px;
     bottom: 14px;
   }
   .look-hint {
@@ -947,11 +916,6 @@ dialog dd {
     width: 120px;
     transform: none;
     top: 10px;
-  }
-  .fullscreen-button {
-    top: 48px;
-    right: 11px;
-    font-size: 0.74rem;
   }
   .look-hint {
     left: 10px;
@@ -1184,8 +1148,11 @@ dialog dd {
 }
 @media (min-width: 621px) and (max-width: 760px) {
   .vehicle-select button {
-    padding-inline: 5px;
-    gap: 5px;
+    padding-inline: 3px;
+    gap: 4px;
+  }
+  .top-tools {
+    gap: 0;
   }
   .brand {
     gap: 6px;
@@ -1213,7 +1180,7 @@ dialog dd {
     width: 28px;
   }
 }
-@media (max-width: 405px) {
+@media (max-width: 430px) {
   .vehicle-select .icon {
     display: none;
   }
@@ -1226,5 +1193,14 @@ dialog dd {
   .brand img {
     width: 26px;
     height: 26px;
+  }
+}
+@media (max-width: 345px) {
+  .topbar {
+    gap: 2px;
+    padding-inline: 4px;
+  }
+  .vehicle-select button {
+    padding-inline: 2px;
   }
 }

@@ -383,11 +383,6 @@ function syncFullscreen() {
   button.setAttribute('aria-pressed', String(active));
   button.setAttribute('aria-label', label);
   button.title = label + ' (F)';
-  button.querySelector('span').textContent = expandedInWindow
-    ? 'Exit view'
-    : active
-      ? 'Exit fullscreen'
-      : 'Fullscreen';
   setIcon('fullscreen', active ? 'exit-fullscreen' : 'fullscreen');
 }
 async function toggleFullscreen() {
@@ -410,7 +405,7 @@ async function toggleFullscreen() {
           expandedInWindow = true;
         }
       } else expandedInWindow = true;
-      if (expandedInWindow) notice('Cab view expanded to fill this browser window.');
+      if (expandedInWindow) notice('Game expanded to fill this window.');
     }
   } catch {
     if (nativeFullscreen()) notice('Use your browser’s fullscreen control to exit.');
